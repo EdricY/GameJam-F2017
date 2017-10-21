@@ -7,7 +7,7 @@
 
 <body>
 	<div id="connectdiv">
-		<div>
+		<div hidden>
 			<span>Name:</span>
 			<input id="myName" name="myName" type="text">
 		</div>
@@ -25,23 +25,12 @@
 <script>
 var ctx = canvas.getContext("2d");
 ctx.save();
-
-var fire_sound = new Audio('sounds/player_fire_sound.wav');
-var hurt_sound = new Audio('sounds/player_hurt_sound.wav');
-var heal_sound = new Audio('sounds/player_heal_sound.wav');
-var lose_sound = new Audio('sounds/player_lose_sound.wav');
-
-
 var backcolor = "#777";
 var pause = 10;
 var gameInt;
 
 var socket;
 
-var player = {};
-var camera;
-var mouseX;
-var mouseY;
 
 var aimAngle;
 
@@ -57,7 +46,7 @@ var invulnTimer = 0;
 var blink = false;
 
 
-const [CONNECT, UPDATE, SHOOT, DAMAGE] = [0,1,2,3];
+const [CONNECT, UPDATE, SHOOT, DAMAGE, SPECTATE] = [0,1,2,3,4];
 const pi = Math.PI;
 const tau = 2*pi;
 const R = 625;
@@ -77,7 +66,7 @@ function connect() {
 	socket.onopen = function () {
 		connectdiv.hidden = true;
 		canvas.hidden = false;
-		socket.send(newPacket(CONNECT, {name: myName.value}));
+		socket.send(newPacket(SPECTATE, {}));
 	}
 	socket.onclose = e => {
 		console.log(e);
@@ -87,26 +76,16 @@ function connect() {
 	socket.onmessage = e => {
 		let temp = JSON.parse(e.data);
 		//console.log(temp)
-		if (temp.type == CONNECT) {
-			initGame(temp.obj);
+		if (temp.type == SPECTATE) {
+			gameInt = setInterval(tick, pause);
 		} else if (temp.type == UPDATE) {
 			otherplayers = temp.obj.players;
 			bullets = temp.obj.bullets;
 			squares = temp.obj.squares;
 			walls = temp.obj.walls;
-		} else if (temp.type == DAMAGE) { // only from bullets
-			if (invulnTimer == 0){
-				player.damage.push(temp.obj.color);
-				Particles.explode(player.x, -player.y, temp.obj.color)
-				if (player.damage.length >= 3) {
-					lose_sound.pause();
-					lose_sound.play();
-				} else {
-					hurt_sound.pause();
-					hurt_sound.play();
-				}
-				invulnTimer = 100;
-			}
+		} else if (temp.type == DAMAGE) {
+			console.log("d " + temp.obj)
+			player.damage.push(temp.obj.color);
 		}
 	}
 }
@@ -132,78 +111,6 @@ function fillCircle(x, y, r, color) {
 	ctx.fill();
 }
 
-
-function update() {
-	if (keys[37] || keys[65]){
-		player.theta -= .01
-	} else if (keys[39] || keys[68]) {
-		player.theta += .01
-	}
-	player.theta = player.theta % tau;
-	player.x = R * Math.cos(player.theta);
-	player.y = R * Math.sin(player.theta);
-
-	let dy = mouseY - 350;
-	let dx = mouseX - 350;
-
-	aimAngle = Math.atan(-dy/dx);
-	if (dx < 0) {
-		aimAngle += pi;
-	} if (dx == 0) {
-		if (dy < 0) aimAngle = pi/2;
-		else aimAngle = 3*pi/2;
-	}
-
-	if (sReady == 0){
-		if (keys[0]) {
-			sReady = COOLDOWN;
-			//bullets.push(newBullet(aimAngle, player.color));
-			socket.send(newPacket(SHOOT, {
-				theta: aimAngle + .4*Math.random()-.4*Math.random(), color: player.color, x:player.x, y:-player.y, v:7
-			}));
-			fire_sound.pause();
-			fire_sound.play();
-		}
-	} else {
-		sReady--;
-	}
-	//damage
-	if (invulnTimer == 0) {
-		blink = false;
-		for (let w of walls) {
-			let dth = (player.theta - w.theta + tau + tau + tau) % tau;
-
-			if ((Math.abs(dth) < .05 || Math.abs(tau-dth) < .05) && w.color != player.color){
-				Particles.explode(player.x, -player.y, w.color)
-				if (w.color === "white"){
-					player.damage.pop();
-					invulnTimer = 100;
-					heal_sound.pause();
-					heal_sound.play();
-				} else {
-					player.damage.push(w.color)
-					invulnTimer = 100;
-
-					if (player.damage.length >= 3) {
-						lose_sound.pause();
-						lose_sound.play();
-					} else {
-						hurt_sound.pause();
-						hurt_sound.play();
-					}
-				}
-			}
-		}
-	} else {
-		invulnTimer--;
-		invulnTimer = invulnTimer <= 0 ? 0 : invulnTimer;
-		blink = !blink;
-	}
-
-
-	socket.send(newPacket(UPDATE, player));
-
-}
 
 function drawField() {
 	ctx.beginPath();
@@ -260,36 +167,13 @@ function drawWall(w) {
 	drawSquare(w);
 }
 
-function drawAimLine() {
-	ctx.beginPath();
-	ctx.strokeStyle = "black";
-	ctx.moveTo(player.x, -player.y);
-	//ctx.lineTo(player.x - 350+mouseX, player.y - 350+mouseY);
-
-	let dy = mouseY - 350;
-	let dx = mouseX - 350;
-
-	let m = dy / dx;
-
-	if (dx == 0){
-		if (dy < 0) {
-			ctx.lineTo(player.x, player.y - 1000);
-		} else {
-			ctx.lineTo(player.x, player.y + 1000);
-		}
-	}
-	else {
-		ctx.lineTo(player.x + 1000 * dx, player.y + 1000 * dy);
-	}
-	ctx.fill();
-	ctx.stroke();
-}
-
 
 function draw() {
 	ctx.fillStyle = backcolor;
+
 	ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-	ctx.translate(350 - 625 * Math.cos(player.theta), 350 + 625 * Math.sin(player.theta));
+	ctx.translate(canvas.width/2, canvas.height/2);
+	ctx.scale(.5,.5);
 
 	// fillCircle(350 + 625 * Math.cos(player.theta), 350 + 625 * Math.sin(player.theta), 625, "#797")
 	// strokeCircle(350 + 625 * Math.cos(player.theta), 350 + 625 * Math.sin(player.theta), 625, "blue")
@@ -302,57 +186,20 @@ function draw() {
 		drawSquare(s);
 	}
 	for (let o of otherplayers) {
-		if(o.color !== player.color)
-			drawPlayer(o);
-	}
-
-	if (player.damage.length < 3 && !blink) {
-		drawPlayer(player);
-		drawAimLine();
+		drawPlayer(o);
 	}
 
 	for (let b of bullets) {
 		if (b == null) break;
 		drawBullet(b);
 	}
-
-	Particles.draw(ctx);
 	ctx.resetTransform();
 }
 
 function tick() {
-	if (player.damage.length < 3)
-		update();
-	Particles.update();
 	draw();
 }
 
-onkeyup = e => {
-	let k = e.keyCode;
-	keys[k] = false;
-}
-
-onkeydown = e => {
-	let k = e.keyCode;
-	keys[k] = true;
-}
-
-canvas.onmousedown = e => {
-	let k = e.button;
-	keys[k] = true;
-}
-canvas.onmouseup = e => {
-	let k = e.button;
-	keys[k] = false;
-}
-canvas.oncontextmenu = e => {
-	e.preventDefault();
-}
-
-canvas.onmousemove = e => {
-	mouseX = e.x - 8;
-	mouseY = e.y - 10;
-}
 
 </script>
 </body>
