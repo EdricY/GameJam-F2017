@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>GameJam F2017</title>
+</head>
+
+<body>
+	<div id="connectdiv">
+		<span>Server Address:</span>
+		<input id="ipaddress" name="ipaddress" type="text">
+		<input type="button" value="Connect!" onclick="connect()">
+		<span id="connectmsg"></span>
+	</div>
+	<canvas hidden id="canvas" width="750" height="750">Your browser failed to load the canvas.</canvas>
+<script>
+var ctx = canvas.getContext("2d");
+var backcolor = "#777";
+var pause = 10;
+
+var socket;
+/*
+var url = 'ws://' + ipaddress.value + ':4242';
+socket = new WebSocket(url);
+socket.onopen = function () {
+	socket.send("Connect");
+}
+socket.onmessage = (event) => {
+	let temp = JSON.parse(event.data);
+	
+}
+*/
+
+
+function connect() {
+	connectmsg.innerText = "";
+	var url = 'ws://' + ipaddress.value + ':4242';
+	try {
+		socket = new WebSocket(url);
+		socket.onopen = function () {
+			socket.send("Connect");
+		}
+		socket.onclose = e => {console.log(e); throw new Error("couldn't connect");}
+	} catch (ex) {
+		//console.log(ex);
+		connectmsg.innerText = "Failed to Connect";
+	}
+	
+	
+}
+
+
+function update() {
+	
+}
+
+function draw() {
+	ctx.fillStyle = backcolor;
+	ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+	
+}
+
+function tick() {
+  update();
+  draw();
+}
+
+var gameInt = setInterval(tick, pause);
+
+</script>
+</body>
+</html>
