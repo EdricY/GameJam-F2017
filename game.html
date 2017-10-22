@@ -71,10 +71,14 @@ var walls = [];
 var coins = [];
 var sReady = 0;
 
+var myScore = 0;
+
 var invulnTimer = 0;
 var blink = false;
 
 var gameOverFade = 0;
+
+var qwer = Date.now();
 
 const [CONNECT, UPDATE, SHOOT, DAMAGE] = [0,1,2,3];
 const pi = Math.PI;
@@ -91,7 +95,7 @@ function newPacket(type, obj){
 
 function connect() {
 	connectmsg.innerText = "";
-	var url = 'ws://' + ipaddress.value + ':4242';
+	var url = 'ws://' + ipaddress.value + ':4243';
 	socket = new WebSocket(url);
 	socket.onopen = function () {
 		connectdiv.hidden = true;
@@ -143,7 +147,7 @@ function connect() {
 }
 
 function initGame(obj){
-	gameInt = setInterval(tick, pause);
+	gameInt = setInterval(tick, 1);// pause);
 	player = obj;
 	invulnTimer = 100;
 }
@@ -158,6 +162,17 @@ function updateScoreboard(scores) {
 		lsit.appendChild(node);
 		lsit.style.color=s.color
 		scoreboard.appendChild(lsit);
+		if (s.color == player.color) {
+			if (Math.floor(s.score/500) != Math.floor(myScore/500))
+			{
+				Particles.explode(player.x, -player.y, "white")
+				player.damage = [];
+				invulnTimer = 100;
+				heal_sound.pause();
+				heal_sound.play();
+			}
+			myScore = s.score;
+		}
 	}
 }
 
@@ -178,10 +193,11 @@ function fillCircle(x, y, r, color) {
 
 
 function update() {
+
 	if (keys[37] || keys[65]){
-		player.theta -= .01
+		player.theta -= .01 + Math.log((myScore/200000)+1)
 	} else if (keys[39] || keys[68]) {
-		player.theta += .01
+		player.theta += .01 + Math.log((myScore/200000)+1)
 	}
 	player.theta = player.theta % tau;
 	player.x = R * Math.cos(player.theta);
@@ -198,12 +214,12 @@ function update() {
 		else aimAngle = 3*pi/2;
 	}
 
-	if (sReady == 0){
+	if (sReady <= 0){
 		if (keys[0]) {
-			sReady = COOLDOWN;
+			sReady = COOLDOWN - Math.log((myScore/10)+1);
 			//bullets.push(newBullet(aimAngle, player.color));
 			socket.send(newPacket(SHOOT, {
-				theta: aimAngle + .4*Math.random()-.4*Math.random(), color: player.color, x:player.x, y:-player.y, v:7
+				theta: aimAngle + .4*Math.random()-.4*Math.random(), color: player.color, x:player.x, y:-player.y, v:5 + myScore/1000
 			}));
 			fire_sound.pause();
 			fire_sound.play();
@@ -217,9 +233,9 @@ function update() {
 		for (let w of walls) {
 			let dth = (player.theta - w.theta + tau + tau + tau) % tau;
 
-			if ((Math.abs(dth) < .05 || Math.abs(tau-dth) < .05) && w.color != player.color){
+			if ((Math.abs(dth) < .05 || Math.abs(tau-dth) < .05) && w.color != player.color) {
 				Particles.explode(player.x, -player.y, w.color)
-				if (w.color === "white"){
+				if (w.color === "white"){//white heals
 					player.damage.pop();
 					invulnTimer = 100;
 					heal_sound.pause();
@@ -244,9 +260,7 @@ function update() {
 		blink = !blink;
 	}
 
-
 	socket.send(newPacket(UPDATE, player));
-
 }
 
 function drawField() {
@@ -326,20 +340,20 @@ function drawAimLine() {
 	ctx.moveTo(player.x, -player.y);
 	//ctx.lineTo(player.x - 350+mouseX, player.y - 350+mouseY);
 
-	let dy = mouseY - 350;
-	let dx = mouseX - 350;
+	let dmy = mouseY - 350;
+	let dmx = mouseX - 350;
 
-	let m = dy / dx;
+	let m = dmy / dmx;
 
-	if (dx == 0){
-		if (dy < 0) {
+	if (dmx == 0){
+		if (dmy < 0) {
 			ctx.lineTo(player.x, player.y - 1000);
 		} else {
 			ctx.lineTo(player.x, player.y + 1000);
 		}
 	}
 	else {
-		ctx.lineTo(player.x + 1000 * dx, player.y + 1000 * dy);
+		ctx.lineTo(player.x + 1000 * dmx, player.y + 1000 * dmy);
 	}
 	ctx.fill();
 	ctx.stroke();
@@ -404,13 +418,17 @@ function drawEndGameScreen(){
 	// ctx.stroke();
 	ctx.globalAlpha = 1;
 	if (gameOverFade < 1) {
-		gameOverFade += .01
+		gameOverFade += .001
 	}
 }
 
 function tick() {
-	if (player.damage.length < 3)
-		update();
+	if (player.damage.length < 3){
+		if (Date.now() - qwer > 10){
+			qwer = Date.now();
+			update();
+		}
+	}
 	Particles.update();
 	draw();
 }

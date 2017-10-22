@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
-const wss = new WebSocket.Server( { port : 4242 } );
+const wss = new WebSocket.Server( { port : 4243 } );
 
-console.log("Running server on port 4242")
+console.log("Running server on port 4243")
 
 const [CONNECT, UPDATE, SHOOT, DAMAGE, SPECTATE] = [0,1,2,3,4];
 
@@ -34,7 +34,7 @@ function newSquare() {
         x: 0,
         y: 0,
         r: 25,
-        v: .5 + Math.random() * .5,
+        v: 1 + Math.random() * .5,
         color: "black",
         theta: Math.random() * tau
     }
@@ -126,7 +126,7 @@ wss.on('connection', function connection(ws) {
     });
 
     ws.on('close', function closing(data) {
-        console.log('Disconnect: ' + ws.name);
+        console.log('Disconnect: ' + ws.name + '  Score: ' + ws.score);
     });
 });
 
@@ -144,12 +144,12 @@ function tick() {
     spawnTimer --;
     if (spawnTimer <= 0) {
         squares.push(newSquare());
-        spawnTimer = 150 + Math.floor(90*Math.random());
+        spawnTimer = 10 + Math.floor(90*Math.random());
     }
     bulletSpawnTimer --;
     if (bulletSpawnTimer <= 0) {
         bullets.push(newBullet());
-        bulletSpawnTimer = 10 + Math.floor(30*Math.random());
+        bulletSpawnTimer = 10 + Math.floor(20*Math.random());
     }
     coinSpawnTimer --;
     if (coinSpawnTimer <= 0) {
@@ -199,7 +199,7 @@ function tick() {
                     //pick up coins
                     let dth = (client.p.theta - c.theta + tau + tau + tau) % tau;
                     if ((Math.abs(dth) < .05 || Math.abs(tau-dth) < .05)){
-                        client.score += 10;
+                        client.score += 5;
                         explosions.push(newExplosion(c.x, -c.y, "gold", 5, true));
                         coins.splice(i--, 1);
                     }

@@ -68,7 +68,7 @@ function newPacket(type, obj){
 
 function connect() {
 	connectmsg.innerText = "";
-	var url = 'ws://' + ipaddress.value + ':4242';
+	var url = 'ws://' + ipaddress.value + ':4243';
 	socket = new WebSocket(url);
 	socket.onopen = function () {
 		connectdiv.hidden = true;
