@@ -1,0 +1,39 @@
+<meta charset="utf-8" lang="en">
+**Colular Play Instructions**
+
+[Main Menu](/~eyu/GameJam/GameJam-F2017/)
+
+__Basics__
+
+The goal of the game is simple: survive. You are one of a number of players in the Circuit, a circular track where you use your blaster to hit other players and floating entities emenating from the center of the Circuit.
+
+If you hit a floating entity, it becomes yours, and so when the entity reaches the perimeter of the Circuit, you are able to pass through it without harm. _But_, if an enemy makes a floating entity their own, when you pass through you will take damage and be invulnurable for a short time afterward.
+
+You have a total of three lives, shown on your player model by how little of your player is your color. If you lose all three lives, it's game over. Sometimes, if a floating entity makes it to the perimeter of the Circuit, there is a chance it will turn white. Passing through an entity that is white will give back one life.
+
+Oh yeah, there are blaster bolts that are also firing randomly from outside the Circuit. These can harm you and can turn the floating entities back to black even if you've changed them to your color.
+
+The point system exists to give you some sense of achievement. Collecting the yellow coins will give you ten points each, and staying alive will give you one point per second you manage to survive.
+
+The controls are as follows:
+
+- Using `a` and `d` to move clockwise/counter-clockwise
+
+- Aim with the mouse
+
+- Left-click to fire
+
+Good luck.
+
+__IF USING FIREFOX:__
+
+- Make sure your connection is `http`. We know that you want a secure connection, but you can't always get what you want. We promise our game doesn't include any viruses or malicious pop-ups, except, of course, for the game itself.
+
+__For Hosting:__
+
+ - Download [game.js](/~eyu/GameJam/GameJam-F2017/game.js).
+ - In the same directory run <code>npm install ws</code>
+ - Start server by running <code>node game.js</code>
+
+
+<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="https://casual-effects.com/markdeep/latest/markdeep.min.js"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible");</script>

@@ -30,6 +30,11 @@ Particles = {
         for (let i = 0; i < t; i++){
             this.parts.push(newPart(x,y, color));
         }
+    },
+	spiral: function(x, y, color, t=20) {
+        for (let i = 0; i < t; i++){
+            this.parts.push(newSpiralPart(x,y, color));
+        }
     }
 }
 
@@ -70,24 +75,27 @@ function newPart(x, y, color) {
 	}
 }
 
-function newSpiralPart(x, y) {
+function newSpiralPart(x, y, color) {
 	return {
 		ox: x,
 		oy: y,
 		x: x,
 		y: y,
-		r: 1 + 7*Math.random(),
-		v: 10,
-		color: colors[Math.floor(Math.random()*3)],
+		r: 2 + 3*Math.random(),
+		v: 5,
+		color: Math.random() > .5 ? "white" : color,
 		theta: Math.random() * tau,
 		draw: function(ctx){
 			ctx.beginPath();
-			ctx.lineWidth = .2;
+			let oldW = ctx.lineWidth;
+			ctx.lineWidth = 1;
 			ctx.fillStyle = this.color;
 			ctx.arc(this.x, this.y, this.r, 0, tau);
 			ctx.fill();
 			ctx.strokeStyle = "black";
 			ctx.stroke();
+			ctx.closePath();
+            ctx.lineWidth = oldW;
 		},
 		update: function(){
 			this.x += this.r * Math.cos(this.theta);

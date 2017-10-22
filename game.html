@@ -5,7 +5,7 @@
 	<title>GameJam F2017</title>
 </head>
 
-<body>
+<body id="body">
 	<div id="connectdiv">
 		<div>
 			<span>Name:</span>
@@ -18,8 +18,24 @@
 		<input type="button" value="Connect!" onclick="connect()">
 		<div id="connectmsg"></div>
 	</div>
-	<div>
-		<canvas hidden id="canvas" width="750" height="750">Your browser failed to load the canvas.</canvas>
+	<div id="gameDiv" hidden style="text-align:center;">
+		<div style="flex:1; margin:auto;">
+			<canvas id="canvas" width="750" height="750">Your browser failed to load the canvas.</canvas>
+			<div style="
+			font-size: 16pt;
+			position:absolute;
+			right:10px;
+			top:10px;
+			text-align:left;
+			padding: 6px 10px 0px 0px;
+			text-shadow: -1px -1px 0 #000,
+					     1px -1px 0 #000,
+					     -1px 1px 0 #000,
+					     1px 1px 0 #000;">
+				<ol id="scoreboard" style=>
+				</ol>
+			</div>
+		</div>
 	</div>
 <script src="particles.js"></script>
 <script>
@@ -30,9 +46,10 @@ var fire_sound = new Audio('sounds/player_fire_sound.wav');
 var hurt_sound = new Audio('sounds/player_hurt_sound.wav');
 var heal_sound = new Audio('sounds/player_heal_sound.wav');
 var lose_sound = new Audio('sounds/player_lose_sound.wav');
+var coin_sound = new Audio('sounds/player_coin_sound.wav');
 
 
-var backcolor = "#777";
+var backcolor = "#77A";
 var pause = 10;
 var gameInt;
 
@@ -51,11 +68,13 @@ var otherplayers = [];
 var bullets = [];
 var squares = [];
 var walls = [];
+var coins = [];
 var sReady = 0;
 
 var invulnTimer = 0;
 var blink = false;
 
+var gameOverFade = 0;
 
 const [CONNECT, UPDATE, SHOOT, DAMAGE] = [0,1,2,3];
 const pi = Math.PI;
@@ -76,7 +95,8 @@ function connect() {
 	socket = new WebSocket(url);
 	socket.onopen = function () {
 		connectdiv.hidden = true;
-		canvas.hidden = false;
+		gameDiv.hidden = false;
+		document.getElementById("body").style.backgroundColor = "#888";
 		socket.send(newPacket(CONNECT, {name: myName.value}));
 	}
 	socket.onclose = e => {
@@ -94,6 +114,17 @@ function connect() {
 			bullets = temp.obj.bullets;
 			squares = temp.obj.squares;
 			walls = temp.obj.walls;
+			coins = temp.obj.coins;
+			for (let exp of temp.obj.explosions){
+				if (exp.s){
+					Particles.spiral(exp.x, exp.y, exp.color, exp.t);
+					coin_sound.play();
+				}
+				else
+					Particles.explode(exp.x, exp.y, exp.color, exp.t);
+			}
+			updateScoreboard(temp.obj.scores)
+
 		} else if (temp.type == DAMAGE) { // only from bullets
 			if (invulnTimer == 0){
 				player.damage.push(temp.obj.color);
@@ -115,6 +146,19 @@ function initGame(obj){
 	gameInt = setInterval(tick, pause);
 	player = obj;
 	invulnTimer = 100;
+}
+
+function updateScoreboard(scores) {
+	while (scoreboard.hasChildNodes()) {
+    	scoreboard.removeChild(scoreboard.lastChild);
+	}
+	for (s of scores) {
+		let node = document.createTextNode(s.name + ": " + s.score);
+		let lsit = document.createElement("li");
+		lsit.appendChild(node);
+		lsit.style.color=s.color
+		scoreboard.appendChild(lsit);
+	}
 }
 
 function strokeCircle(x, y, r, color, lw = 2) {
@@ -209,7 +253,7 @@ function drawField() {
 	ctx.beginPath();
 	//ctx.translate(350 - player.x, 350 + player.y);
 	ctx.fillStyle = "#797";
-	ctx.strokeStyle = "blue";
+	ctx.strokeStyle = "336";
 	ctx.arc(0, 0, 625, 0, tau);
 	ctx.fill();
 	ctx.stroke();
@@ -260,8 +304,24 @@ function drawWall(w) {
 	drawSquare(w);
 }
 
+function drawCoin(c){
+	ctx.beginPath();
+	ctx.fillStyle = c.color;
+	ctx.strokeStyle = "black";
+	//ctx.arc(c.x, -c.y, 10, 0, tau);
+	ctx.ellipse(c.x, -c.y, 10, 9, pi-c.theta, 0, tau)
+	ctx.fill();
+	ctx.stroke();
+	ctx.beginPath();
+	ctx.fillStyle = c.color;
+	ctx.ellipse(c.x, -c.y, 8, 3, pi-c.theta, 0, tau)
+	ctx.fill();
+	ctx.stroke();
+}
+
 function drawAimLine() {
 	ctx.beginPath();
+	ctx.setLineDash([5, 3]);
 	ctx.strokeStyle = "black";
 	ctx.moveTo(player.x, -player.y);
 	//ctx.lineTo(player.x - 350+mouseX, player.y - 350+mouseY);
@@ -283,6 +343,7 @@ function drawAimLine() {
 	}
 	ctx.fill();
 	ctx.stroke();
+	ctx.setLineDash([1,0])
 }
 
 
@@ -311,13 +372,40 @@ function draw() {
 		drawAimLine();
 	}
 
+	for (let c of coins) {
+		if (c == null) break;
+		drawCoin(c);
+	}
+
 	for (let b of bullets) {
 		if (b == null) break;
 		drawBullet(b);
 	}
 
 	Particles.draw(ctx);
+	if (player.damage.length >= 3)
+		drawEndGameScreen()
 	ctx.resetTransform();
+}
+
+function drawEndGameScreen(){
+	ctx.beginPath();
+	ctx.globalAlpha = gameOverFade;
+	ctx.font = '72px serif';
+	ctx.fillStyle = "white";
+	ctx.strokeStyle = "black";
+	ctx.fillText("Game Over", player.x, -player.y);
+	ctx.strokeText("Game Over", player.x, -player.y);
+	ctx.font = '36px serif';
+	ctx.fillText("Press Space to restart", player.x, -player.y+72);
+	ctx.strokeText("Press Space to restart", player.x, -player.y+72);
+	ctx.textAlign="center";
+	// ctx.fill();
+	// ctx.stroke();
+	ctx.globalAlpha = 1;
+	if (gameOverFade < 1) {
+		gameOverFade += .01
+	}
 }
 
 function tick() {
@@ -335,6 +423,9 @@ onkeyup = e => {
 onkeydown = e => {
 	let k = e.keyCode;
 	keys[k] = true;
+	if (k == 32 && player.damage.length >= 3) { //space
+		socket.onopen();
+	}
 }
 
 canvas.onmousedown = e => {
@@ -350,8 +441,8 @@ canvas.oncontextmenu = e => {
 }
 
 canvas.onmousemove = e => {
-	mouseX = e.x - 8;
-	mouseY = e.y - 10;
+	mouseX = e.x - canvas.offsetLeft;
+	mouseY = e.y - canvas.offsetTop;
 }
 
 </script>

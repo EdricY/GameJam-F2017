@@ -18,8 +18,15 @@
 		<input type="button" value="Connect!" onclick="connect()">
 		<div id="connectmsg"></div>
 	</div>
-	<div>
-		<canvas hidden id="canvas" width="750" height="750">Your browser failed to load the canvas.</canvas>
+
+	<div id="gameDiv" style="text-align:center; ">
+		<div style="flex:1; margin:auto; float:center;">
+			<canvas id="canvas" width="750" height="750">Your browser failed to load the canvas.</canvas>
+			<div style="position:absolute; right:10px; top:10px">
+				<ol id="scoreboard" style=>
+				</ol>
+			</div>
+		</div>
 	</div>
 <script src="particles.js"></script>
 <script>
@@ -83,6 +90,14 @@ function connect() {
 			bullets = temp.obj.bullets;
 			squares = temp.obj.squares;
 			walls = temp.obj.walls;
+			coins = temp.obj.coins;
+			for (let exp of temp.obj.explosions){
+				if (exp.s)
+					Particles.spiral(exp.x, exp.y, exp.color, exp.t);
+				else
+					Particles.explode(exp.x, exp.y, exp.color, exp.t);
+			}
+			updateScoreboard(temp.obj.scores)
 		} else if (temp.type == DAMAGE) {
 			console.log("d " + temp.obj)
 			player.damage.push(temp.obj.color);
@@ -94,6 +109,19 @@ function initGame(obj){
 	gameInt = setInterval(tick, pause);
 	player = obj;
 	invulnTimer = 100;
+}
+
+function updateScoreboard(scores) {
+	while (scoreboard.hasChildNodes()) {
+    	scoreboard.removeChild(scoreboard.lastChild);
+	}
+	for (s of scores) {
+		let node = document.createTextNode(s.name + " " + s.score);
+		let lsit = document.createElement("li");
+		lsit.appendChild(node);
+		lsit.style.color=s.color
+		scoreboard.appendChild(lsit);
+	}
 }
 
 function strokeCircle(x, y, r, color, lw = 2) {
@@ -168,6 +196,16 @@ function drawWall(w) {
 }
 
 
+function drawCoin(c){
+	ctx.beginPath();
+	ctx.fillStyle = c.color;
+	ctx.strokeStyle = "black";
+	ctx.arc(c.x, -c.y, 10, 0, tau);
+	ctx.ellipse(c.x, -c.y, 10, 5, pi-c.theta, 0, tau)
+	ctx.fill();
+	ctx.stroke();
+}
+
 function draw() {
 	ctx.fillStyle = backcolor;
 
@@ -189,14 +227,22 @@ function draw() {
 		drawPlayer(o);
 	}
 
+	for (let c of coins) {
+		if (c == null) break;
+		drawCoin(c);
+	}
+
 	for (let b of bullets) {
 		if (b == null) break;
 		drawBullet(b);
 	}
+
+	Particles.draw(ctx);
 	ctx.resetTransform();
 }
 
 function tick() {
+	Particles.update();
 	draw();
 }
 
